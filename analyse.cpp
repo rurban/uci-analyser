@@ -620,6 +620,7 @@ bool showEvaluationsForMove(const string &playedMove, bool white) {
     cout << " time=" << '"' << evaluations[0]->getTime() << '"';
     cout << '>';
     cout << playedMove << "</played>" << endl;
+    bool ev_ok = false;
 
     // Whether the playedMove was one of those evaluated.
     bool playedMoveEvaluated = false;
@@ -629,6 +630,7 @@ bool showEvaluationsForMove(const string &playedMove, bool white) {
         const Evaluation *ev = *it;
         string firstMove = ev->getFirstMove();
         if (ev != NULL) {
+            ev_ok = true;
             if (!annotate) {
                 cout << " <evaluation move=" << '"' << firstMove << '"';
                 cout << " value=" << '"';
@@ -649,6 +651,11 @@ bool showEvaluationsForMove(const string &playedMove, bool white) {
                 playedMoveEvaluated = true;
             }
         }
+    }
+    // engine failure, but add it as 0. needed for dataextract
+    if (!annotate && !ev_ok) {
+        cout << " <evaluation move=" << '"' << playedMove << '"';
+        cout << " value=" << "\"0\"/>" << endl;
     }
     cout << "</move>" << endl;
     return playedMoveEvaluated;
