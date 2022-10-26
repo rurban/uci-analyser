@@ -111,7 +111,8 @@ bool Engine::initEngine(int variations, int searchDepth,
         setOptions(options);
 
         startNewGame();
-        return checkIsReady();
+        send("isready");
+        return waitForResponse("readyok");
     } else {
         return false;
     }
@@ -143,7 +144,7 @@ void Engine::send(const string &str) {
  * Send the given string to the engine.
  */
 void Engine::send(const char *str) {
-        //cout << "# Send: " << str << endl;
+    //cout << "# Send: " << str << endl;
 #ifdef __unix__
     fprintf(toEngine, "%s\n", str);
     fflush(toEngine);

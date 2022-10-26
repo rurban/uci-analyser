@@ -17,6 +17,7 @@
  *
  *  David J. Barnes may be contacted as d.j.barnes@kent.ac.uk
  *  https://www.cs.kent.ac.uk/people/staff/djb/
+ *  This variant is from https://github.com/rurban/uci-analyser
  */
 
 #include <fstream>
@@ -41,7 +42,7 @@ using namespace std;
  * The resulting analysis is wrapped in XML.
  */
 
-static const char *VERSION = "2017.04.07";
+static const char *VERSION = "2022.10.26";
 
 // The length of algebraic moves expected by a UCI engine.
 #define ALGEBRAIC_MOVELEN 4
@@ -69,6 +70,7 @@ bool worse_move(const Evaluation *move, const Evaluation *best);
 
 // Evaluations of the current move.
 static vector<Evaluation *> evaluations;
+//static vector<double> matchfactors;
 
 // Defaults that are settable by arguments.
 static int defaultBookDepth = 8;
@@ -76,6 +78,7 @@ static unsigned numVariations = 5;
 static int searchDepth = 20;
 // Default analysis engine.
 static string engineName = "stockfish";
+// or stockfish7, ...
 
 static map<string, string> engineOptions;
 // Which colours we wish to analyse.
@@ -94,16 +97,12 @@ static bool annotate = false;
 // Whether the output is XML.
 static bool XMLformat = true;
 
+// Whether to calculate the engine match factor
+//static bool matchfactor = false;
 // The evaluation engine.
 static Engine *engine;
 
-#ifdef __unix__
-
 int main(int argc, char *argv[]) {
-#else
-
-int main(int argc, char *argv[]) {
-#endif
     bool ok = true;
     int argnum = 1;
 
@@ -152,6 +151,8 @@ int main(int argc, char *argv[]) {
                 cerr << "Missing engine name argument to " << arg << endl;
                 ok = false;
             }
+        //} else if (arg == "--matchfactor") {
+        //matchfactor = true;
         } else if (arg == "--help") {
             showUsage(argv[0]);
         } else if (arg == "--setoption") {
@@ -189,7 +190,10 @@ int main(int argc, char *argv[]) {
             ok = false;
         }
     }
-
+    // on 64bit machines default to 4 threads
+    if (!engineOptions.size() && engineName.substr(0, 9) == "stockfish") {
+        engineOptions["Threads"] = "4";
+    }
     if (ok) {
         vector<string> files;
         for (; argnum < argc; argnum++) {
@@ -217,6 +221,8 @@ void showUsage(const char *programName) {
             "        search depth in ply\n" <<
             "    [--engine program]\n" <<
             "        program to use as the UCI engine\n" <<
+            //"    [--matchfactor]\n" <<
+            //"        calculate the engine coincidence factor 0-100%\n" <<
             "    [--help]\n" <<
             "        show this usage message\n" <<
             "    [--setoption optionName optionValue]\n " <<
@@ -318,9 +324,9 @@ bool processStdin(void) {
 
 /* Extract the string between quotes as the value of a tag. */
 static string extractTagValue(const string& line) {
-    unsigned first_quote = line.find_first_of("\"");
+    size_t first_quote = line.find_first_of("\"");
     if (first_quote != string::npos) {
-        unsigned second_quote = line.find_first_of("\"", first_quote + 1);
+        size_t second_quote = line.find_first_of("\"", first_quote + 1);
         if (second_quote != string::npos) {
             return string(line.substr(first_quote + 1, second_quote - first_quote - 1).c_str());
         } else {
@@ -489,11 +495,14 @@ void sendGame(vector<string> &movelist, const string& fenstring, int bookDepth) 
             }
         } else {
             cout << "<analysis " <<
-                    "engine = \"" << engine->getIdentity() << "\" " <<
-                    "bookDepth = \"" << bookDepth << "\" " <<
-                    "searchDepth = \"" << searchDepth << "\" " <<
-                    "variations = \"" << numVariations << "\" " <<
-                    ">" << endl;
+                    "engine=\"" << engine->getIdentity() << "\" " <<
+                    "bookDepth=\"" << bookDepth << "\" " <<
+                    "searchDepth=\"" << searchDepth << "\" " <<
+                    "variations=\"" << numVariations << "\" ";
+            for (auto opt: engineOptions) {
+                cout << opt.first << "=\"" << opt.second << "\" ";
+            }
+            cout << ">" << endl;
         }
         engine->startNewGame();
         // Skip over the portion considered to be book.
@@ -602,11 +611,11 @@ bool haveEvaluationForMove(const string &move) {
  * Return whether the played move was evaluated.
  */
 bool showEvaluationsForMove(const string &playedMove, bool white) {
-    cout << "<move player = " <<
+    cout << "<move player=" <<
             '"' << (white ? "white" : "black") << '"' <<
-            " >" << endl;
-    cout << "<played";
-    // cout << " time = " << '"' << evaluations[0]->getTime() << '"' ;
+            ">" << endl;
+    cout << " <played";
+    cout << " time=" << '"' << evaluations[0]->getTime() << '"';
     cout << '>';
     cout << playedMove << "</played>" << endl;
 
@@ -619,8 +628,8 @@ bool showEvaluationsForMove(const string &playedMove, bool white) {
         string firstMove = ev->getFirstMove();
         if (ev != NULL) {
             if (!annotate) {
-                cout << "<evaluation move = " << '"' << firstMove << '"';
-                cout << " value = " << '"';
+                cout << " <evaluation move=" << '"' << firstMove << '"';
+                cout << " value=" << '"';
                 if (ev->isForcedMate()) {
                     cout << "mate " << ev->getNumMateMoves();
                 } else {
@@ -631,7 +640,7 @@ bool showEvaluationsForMove(const string &playedMove, bool white) {
                         cout << " U";
                     }
                 }
-                cout << "\" />";
+                cout << "\"/>";
                 cout << endl;
             }
             if (firstMove == playedMove) {
@@ -731,7 +740,7 @@ void outputTag(const string& tagLine) {
     int first_quote = tagLine.find_first_of("\"");
     int last_quote = tagLine.find_last_of("\"");
     if (XMLformat) {
-        cout << "<tag name = \"";
+        cout << " <tag name=\"";
     } else {
         cout << "[";
     }
@@ -742,7 +751,7 @@ void outputTag(const string& tagLine) {
 
     // The value.
     if (XMLformat) {
-        cout << " value = ";
+        cout << " value=";
     } else {
         cout << " ";
     }
@@ -757,7 +766,7 @@ void outputTag(const string& tagLine) {
     }
     cout << "\"" << value << "\"";
     if (XMLformat) {
-        cout << " />" << endl;
+        cout << "/>" << endl;
     } else {
         cout << "]" << endl;
     }

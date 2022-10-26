@@ -59,7 +59,7 @@ public:
     string getResponse(bool& eof);
     void go(void);
     bool initEngine(int variations, int searchDepth,
-            map<string, string>& options);
+                    map<string, string>& options);
     void quitEngine(void);
     void searchMoves(const string& moves);
     void send(const string& str);
@@ -88,8 +88,8 @@ private:
     // Communication to and from the engine.
     FILE *toEngine, *fromEngine;
 #else
-	HANDLE writeToEngine;
-	HANDLE readFromEngine;
+    HANDLE writeToEngine;
+    HANDLE readFromEngine;
 #endif
     // The engine's identity.
     string identity;

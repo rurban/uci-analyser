@@ -1,0 +1,5 @@
+*.pgn
+*.xml
+*.o
+/uci-analyse
+/dataextract*

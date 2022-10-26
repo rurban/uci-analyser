@@ -17,9 +17,11 @@
  *
  *  David J. Barnes may be contacted as d.j.barnes@kent.ac.uk
  *  https://www.cs.kent.ac.uk/people/staff/djb/
+ *  This variant is from https://github.com/rurban/uci-analyser
  */
 
 The source code is available from: https://www.cs.kent.ac.uk/~djb/chessplag/
+or https://github.com/rurban/uci-analyser
 
 Overview
 ========
@@ -43,7 +45,7 @@ Usage
 The analyser takes 0 or more command-line options (see below) and 0 or more game files.
 If no game files are provided then it reads games from standard input:
 
-    analyse [optional-command-line-options] game-file ...
+    uci-analyse [command-line-options] game-file ...
 
 The analyser requires as input games written with PGN headers. However, UCI engines
 expect the moves of a game to be formatted in long-algebraic notation, so games should
@@ -55,7 +57,7 @@ pgn-extract, available from: https://www.cs.kent.ac.uk/~djb/pgn-extract/
 Its -Wuci flag will output the moves of a game in a format suitable for the
 analyser to pass on to a UCI engine. For instance:
 
-pgn-extract -Wuci --output out.pgn games.pgn
+    pgn-extract -Wuci --output out.pgn games.pgn
 
 outputs the PGN games from games.pgn to the file out.pgn, which can then be passed
 to the analyser.
@@ -114,14 +116,14 @@ The analysis of each game is output in XML format. The output includes the game 
 
 <game>
 <tags>
-<tag name = "Event" value = "World Championship 23th" />
-<tag name = "Site" value = "Moscow" />
-<tag name = "Date" value = "1960.03.17" />
-<tag name = "Round" value = "2" />
-<tag name = "White" value = "Botvinnik, Mikhail" />
-<tag name = "Black" value = "Tal, Mihail" />
-<tag name = "Result" value = "1/2-1/2" />
-<tag name = "BookDepth" value = "17" />
+ <tag name="Event" value="World Championship 23th"/>
+ <tag name="Site" value="Moscow"/>
+ <tag name="Date" value="1960.03.17"/>
+ <tag name="Round" value="2"/>
+ <tag name="White" value="Botvinnik, Mikhail"/>
+ <tag name="Black" value="Tal, Mihail"/>
+ <tag name="Result" value="1/2-1/2"/>
+ <tag name="BookDepth" value="17"/>
 </tags>
 <moves>
 d2d4 g8f6 c2c4 c7c5 d4d5 e7e6 b1c3 e6d5 c4d5 d7d6 g1f3 g7g6 c1g5 f8g7 f3d2 h7h6
@@ -136,18 +138,18 @@ b3c4 f6e7 b5a4 g7e5 g3f3 h8h4 d1g1 f7f5 1/2-1/2
 
 This is followed by the analysis, which includes the settings of the engine:
 
-<analysis engine = "..." bookDepth = "17" searchDepth = "10" variations = "5" > ... </analysis>
+<analysis engine="..." bookDepth="17" searchDepth="10" variations="5" > ... </analysis>
 
 The evaluation of each played move and the required number of alternatives follow:
 
 <move>
-<played player = "black" >g6g5</played>
-<evaluation move = "e8g8" value = "-88" />
-<evaluation move = "d8e7" value = "-109" />
-<evaluation move = "a7a6" value = "-121" />
-<evaluation move = "b8d7" value = "-121" />
-<evaluation move = "b8a6" value = "-133" />
-<evaluation move = "g6g5" value = "-133" />
+ <played player="black">g6g5</played>
+ <evaluation move="e8g8" value="-88"/>
+ <evaluation move="d8e7" value="-109"/>
+ <evaluation move="a7a6" value="-121"/>
+ <evaluation move="b8d7" value="-121"/>
+ <evaluation move="b8a6" value="-133"/>
+ <evaluation move="g6g5" value="-133"/>
 </move>
 
 Evaluations are typically in centipawns.
@@ -165,3 +167,13 @@ David J. Barnes
 2017.04.07: Addition of "player" attribute in <played> tag, and minor typo updates.
 2017.06.16: Corrected the failure to report "mate in N" correctly with the
             --annotate and --annotatePGN options.
+2021.02.19: Changed "unsigned int" in annotate/extractTagValue to size_t to
+            avoid compiler warning.
+            Replaced return checkIsReady() in engine/initEngine with
+            send("isready"); return waitForResponse("readyOk"); for
+            compatility with LeelaChess.
+2022.10.26: Default to engineOptions Threads 4 with stockfish.
+            Add engineOptions to <analysis > tag.
+            Optimize XML whitespace.
+            Re-added <played time=xx>.
+            Change binary to uci-analyse.

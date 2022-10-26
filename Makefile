@@ -23,7 +23,7 @@
 CC=g++
 CFLAGS=-c -g -Wall -O3 -D__unix__
 OBJS=analyse.o evaluation.o engine.o utils.o
-TARGET=analyse
+TARGET=uci-analyse
 
 .cpp.o:
 	$(CC) $(CFLAGS) $< -o $@
