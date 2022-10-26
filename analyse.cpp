@@ -191,7 +191,9 @@ int main(int argc, char *argv[]) {
         }
     }
     // on 64bit machines default to 4 threads
-    if (!engineOptions.size() && engineName.substr(0, 9) == "stockfish") {
+    if (!engineOptions.size() &&
+        (engineName.substr(0, 9) == "stockfish"
+         || engineName.substr(0, 6) == "komodo")) {
         engineOptions["Threads"] = "4";
     }
     if (ok) {
